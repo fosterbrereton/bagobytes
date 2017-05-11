@@ -1,5 +1,5 @@
 /******************************************************************************/
-// Boilerplate.
+// Bagobytes. Copyright 2017 Foster T. Brereton. All rights reserved.
 /******************************************************************************/
 
 // stdc++
@@ -230,7 +230,7 @@ int main(int argc, char** argv) try {
     if (!file.read(&buffer[0], size))
         throw std::runtime_error("File read failure");
 
-    std::cout << base64(deflate(buffer)) << '\n';
+    std::cout << base64(deflate(buffer));
 
     return 0;
 } catch (const std::exception& error) {
