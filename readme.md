@@ -22,5 +22,3 @@ From the command line, run `setup_msvc.bat`.
 # Included Dependencies
 
 [![conan-boost](https://img.shields.io/badge/conan.io-Boost%2F1.60.0-green.svg)](http://www.conan.io/source/Boost/1.60.0/lasote/stable)
-
-[![conan-tbb](https://img.shields.io/badge/conan.io-tbb%2F4.4.4-green.svg)](http://www.conan.io/source/TBB/4.4.4/memsharded/testing)
