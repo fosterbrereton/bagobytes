@@ -6,43 +6,6 @@ cache:
     - $HOME/.conan
 matrix:
   include:
-    - compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
-      install:
-        - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
-        - pip install conan
-        - mkdir build
-        - cd build
-        - conan install .. --build=missing
-      script:
-        - cmake .. && make
-        - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - ./bagobytes
-        - ./bagobytes bagobytes
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
-          packages:
-            - clang-3.8
-      install:
-        - if [ "$CXX" = "g++" ]; then export CXX="clang++-3.8" CC="clang-3.8"; fi
-        - pip install conan
-        - mkdir build
-        - cd build
-        - conan install .. --build=missing
-      script:
-        - cmake .. && make
-        - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - ./bagobytes
-        - ./bagobytes bagobytes
     - os: osx
       osx_image: xcode8.2
       install:
@@ -55,8 +18,8 @@ matrix:
         - cd build_debug
         - xcodebuild
         - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - ./bagobytes
-        - ./bagobytes bagobytes
+        - echo "Hello, world!" > example.txt
+        - ./bagobytes example.txt
 notifications:
   recipients:
     secure:
