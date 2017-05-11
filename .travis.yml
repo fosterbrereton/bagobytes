@@ -22,7 +22,7 @@ matrix:
       script:
         - cmake .. && make
         - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - ./boilerplate
+        - ./bagobytes
     - compiler: clang
       addons:
         apt:
@@ -40,7 +40,7 @@ matrix:
       script:
         - cmake .. && make
         - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - ./boilerplate
+        - ./bagobytes
     - os: osx
       osx_image: xcode8.2
       install:
@@ -53,7 +53,7 @@ matrix:
         - cd build_debug
         - xcodebuild
         - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - ./boilerplate
+        - ./bagobytes
 notifications:
   recipients:
     secure:

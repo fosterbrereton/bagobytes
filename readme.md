@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/fosterbrereton/boilerplate.svg?branch=master)](https://travis-ci.org/fosterbrereton/boilerplate)
+[![Build Status](https://travis-ci.org/fosterbrereton/bagobytes.svg?branch=master)](https://travis-ci.org/fosterbrereton/bagobytes)
 
-Boilerplate is a relatively empty project that includes a number of common C++ dependencies, to get an initial framework up and running quickly.
+Bagobytes takes an input file and outputs its contents that have been zlib-compressed and base64 encoded.
 
 # Required Binaries
 

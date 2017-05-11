@@ -1,5 +1,4 @@
 [requires]
-TBB/4.4.4@memsharded/testing
 Boost/1.60.0@lasote/stable
 
 [generators]
