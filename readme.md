@@ -21,4 +21,4 @@ From the command line, run `setup_msvc.bat`.
 
 # Included Dependencies
 
-[![conan-boost](https://img.shields.io/badge/conan.io-Boost%2F1.60.0-green.svg)](http://www.conan.io/source/Boost/1.60.0/lasote/stable)
+[![conan-zlib](https://img.shields.io/badge/conan.io-zlib%201.2.11-green.svg)](http://www.conan.io/source/zlib/1.2.11/lasote/stable)

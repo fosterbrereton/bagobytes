@@ -12,65 +12,88 @@
 
 /******************************************************************************/
 
-void base64_round(const char* s, char* d, std::size_t n) {
+template <typename I, // models ForwardIterator
+          typename O> // models OutputIterator
+std::pair<I, O> base64_round(I s, O d, std::size_t n) {
     constexpr char table_k[]{"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"};
 
-    *d++ = table_k[(s[0] >> 2) & 0x3f];
-    *d++ = table_k[(s[0] << 4 | s[1] >> 4) & 0x3f];
+    static_assert(sizeof(typename std::iterator_traits<I>::value_type) == 1, "bad value type");
+    //static_assert(sizeof(typename std::iterator_traits<O>::value_type) == 1, "bad value type");
+
+    auto s0{*s++};
+    auto s1{*s++};
+
+    *d++ = table_k[(s0 >> 2) & 0x3f];
+    *d++ = table_k[(s0 << 4 | s1 >> 4) & 0x3f];
 
     if (n == 1) {
         *d++ = '=';
         *d++ = '=';
     } else {
-        *d++ = table_k[(s[1] << 2 | s[2] >> 6) & 0x3f];
+        auto s2{*s++};
+
+        *d++ = table_k[(s1 << 2 | s2 >> 6) & 0x3f];
 
         if (n == 2) {
             *d++ = '=';
         } else {
-            *d++ = table_k[(s[2]) & 0x3f];
+            *d++ = table_k[s2 & 0x3f];
         }
     }
+
+    return std::make_pair(s, d);
 }
 
 /******************************************************************************/
 
-std::string base64(const std::string& src_str) {
-    std::size_t l(src_str.size());
+template <typename I, // models ForwardIterator
+          typename O> // models OutputIterator
+O base64(I src, I last, O dst) {
+    std::size_t l(std::distance(src, last));
     std::string result(std::ceil(l / 3.) * 4, '?');
-    auto        src{src_str.data()};
-    auto        dst{&result[0]};
 
     while (true) {
-        std::size_t round_size(std::min<std::size_t>(l, 3));
-
-        base64_round(src, dst, round_size);
+        std::tie(src, dst) = base64_round(src, dst, std::min<std::size_t>(l, 3));
 
         if (l < 4)
             break;
 
-        l   -= 3;
-        src += 3;
-        dst += 4;
+        l -= 3;
     }
 
-    return result;
+    return dst;
 }
 
 /******************************************************************************/
 
-void zassert(int err) {
-    if (err != Z_OK)
-        throw std::runtime_error("deflate: " + std::to_string(err));
+template <typename R, // models ForwardRange
+          typename O> // models OutputIterator
+O base64(const R& r, O dst) {
+    return base64(std::begin(r), std::end(r), dst);
 }
 
 /******************************************************************************/
 
-std::string deflate(const std::string& src_str) {
-    constexpr std::size_t chunk_size_k{16384};
+constexpr std::size_t chunk_size_k{4*1024*1024}; // 4MB buffer for encoding
 
-    z_stream      stream;
-    unsigned char out[chunk_size_k];
-    std::string   result;
+struct deleter_t {
+    void operator()(void* x) const {
+        std::free(x);
+    }
+};
+
+typedef std::unique_ptr<void, deleter_t> buffer_t;
+
+/******************************************************************************/
+
+template <typename I, // models ForwardIterator
+          typename O> // models OutputIterator
+O deflate(I src, I last, O dst) {
+    static_assert(sizeof(typename std::iterator_traits<I>::value_type) == 1, "bad value type");
+
+    z_stream       stream;
+    buffer_t       outb(std::malloc(chunk_size_k));
+    unsigned char* out(reinterpret_cast<unsigned char*>(outb.get()));
 
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
@@ -81,8 +104,7 @@ std::string deflate(const std::string& src_str) {
     if (err != Z_OK)
         throw std::runtime_error("deflate: " + std::to_string(err));
 
-    std::size_t l(src_str.size());
-    auto        src{src_str.data()};
+    std::size_t l(std::distance(src, last));
 
     while (true) {
         std::size_t avail{std::min(l, chunk_size_k)};
@@ -90,7 +112,7 @@ std::string deflate(const std::string& src_str) {
         l -= avail;
 
         stream.avail_in = avail;
-        stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(src));
+        stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(&*src));
 
         do {
             stream.avail_out = chunk_size_k;
@@ -103,7 +125,7 @@ std::string deflate(const std::string& src_str) {
 
             auto have = chunk_size_k - stream.avail_out;
 
-            result += std::string(&out[0], &out[have]);
+            dst = std::copy(&out[0], &out[have], dst);
         } while(stream.avail_out == 0);
 
         if (!l)
@@ -114,17 +136,27 @@ std::string deflate(const std::string& src_str) {
 
     deflateEnd(&stream);
 
-    return result;
+    return dst;
 }
 
 /******************************************************************************/
 
-std::string inflate(const std::string& src_str) {
-    constexpr std::size_t chunk_size_k{16384};
+template <typename R, // models ForwardRange
+          typename O> // models OutputIterator
+O deflate(R r, O dst) {
+    return deflate(std::begin(r), std::end(r), dst);
+}
 
-    z_stream      stream;
-    unsigned char out[chunk_size_k];
-    std::string   result;
+/******************************************************************************/
+
+template <typename I, // models ForwardIterator
+          typename O> // models OutputIterator
+O inflate(I src, I last, O dst) {
+    static_assert(sizeof(typename std::iterator_traits<I>::value_type) == 1, "bad value type");
+
+    z_stream       stream;
+    buffer_t       outb(std::malloc(chunk_size_k));
+    unsigned char* out(reinterpret_cast<unsigned char*>(outb.get()));
 
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
@@ -135,8 +167,7 @@ std::string inflate(const std::string& src_str) {
     if (err != Z_OK)
         throw std::runtime_error("inflate: " + std::to_string(err));
 
-    std::size_t l(src_str.size());
-    auto        src{src_str.data()};
+    std::size_t l(std::distance(src, last));
 
     while (true) {
         std::size_t avail{std::min(l, chunk_size_k)};
@@ -144,7 +175,7 @@ std::string inflate(const std::string& src_str) {
         l -= avail;
 
         stream.avail_in = avail;
-        stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(src));
+        stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(&*src));
 
         do {
             stream.avail_out = chunk_size_k;
@@ -157,7 +188,7 @@ std::string inflate(const std::string& src_str) {
 
             auto have = chunk_size_k - stream.avail_out;
 
-            result += std::string(&out[0], &out[have]);
+            dst = std::copy(&out[0], &out[have], dst);
         } while(stream.avail_out == 0);
 
         if (!l)
@@ -168,14 +199,26 @@ std::string inflate(const std::string& src_str) {
 
     deflateEnd(&stream);
 
-    return result;
+    return dst;
+}
+
+/******************************************************************************/
+
+template <typename R, // models ForwardRange
+          typename O> // models OutputIterator
+O inflate(R r, O dst) {
+    return inflate(std::begin(r), std::end(r), dst);
 }
 
 /******************************************************************************/
 
 void run_tests() {
     auto test_base64([](const std::string& plain, const std::string& expected) {
-        if (base64(plain) == expected)
+        std::string encoded;
+
+        base64(plain, std::back_inserter(encoded));
+
+        if (encoded == expected)
             return;
 
         throw std::runtime_error("test_base64 `" + plain + "` failed");
@@ -192,15 +235,23 @@ void run_tests() {
     test_base64("sure.", "c3VyZS4=");
 
     auto test_deflate([](const std::string& plain) {
-        auto deflated(deflate(plain));
+        std::string deflated;
 
-        if (inflate(deflated) == plain)
+        deflate(plain, std::back_inserter(deflated));
+
+        std::string inflated;
+
+        inflate(deflated, std::back_inserter(inflated));
+
+        if (inflated == plain)
             return;
 
         throw std::runtime_error("test_deflate `" + plain + "` failed");
     });
 
+    test_deflate("Hello, world!");
     test_deflate("Hello Hello Hello Hello Hello Hello!");
+    test_deflate("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
 }
 
 /******************************************************************************/
@@ -230,7 +281,10 @@ int main(int argc, char** argv) try {
     if (!file.read(&buffer[0], size))
         throw std::runtime_error("File read failure");
 
-    std::cout << base64(deflate(buffer));
+    std::string deflated;
+
+    deflate(buffer, std::back_inserter(deflated));
+    base64(deflated, std::ostream_iterator<unsigned char>(std::cout));
 
     return 0;
 } catch (const std::exception& error) {
