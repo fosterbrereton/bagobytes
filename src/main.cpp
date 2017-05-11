@@ -20,26 +20,24 @@ std::pair<I, O> base64_round(I s, O d, std::size_t n) {
     static_assert(sizeof(typename std::iterator_traits<I>::value_type) == 1, "bad value type");
     //static_assert(sizeof(typename std::iterator_traits<O>::value_type) == 1, "bad value type");
 
-    auto s0{*s++};
-    auto s1{*s++};
+    auto s0{static_cast<std::uint8_t>(*s++)};
+    auto s1{static_cast<std::uint8_t>(*s++)};
+    auto s2{n > 1 ? static_cast<std::uint8_t>(*s++) : 0};
 
-    *d++ = table_k[(s0 >> 2) & 0x3f];
-    *d++ = table_k[(s0 << 4 | s1 >> 4) & 0x3f];
+    auto i0 = (s0 >> 2) & 0x3f;
+    auto i1 = (s0 << 4 | s1 >> 4) & 0x3f;
+    auto i2 = (s1 << 2 | s2 >> 6) & 0x3f;
+    auto i3 = s2 & 0x3f;
 
-    if (n == 1) {
-        *d++ = '=';
-        *d++ = '=';
-    } else {
-        auto s2{*s++};
+    auto b0 = table_k[i0];
+    auto b1 = table_k[i1];
+    auto b2 = n == 1 ? '=' : table_k[i2];
+    auto b3 = n == 2 ? '=' : table_k[i3];
 
-        *d++ = table_k[(s1 << 2 | s2 >> 6) & 0x3f];
-
-        if (n == 2) {
-            *d++ = '=';
-        } else {
-            *d++ = table_k[s2 & 0x3f];
-        }
-    }
+    *d++ = b0;
+    *d++ = b1;
+    *d++ = b2;
+    *d++ = b3;
 
     return std::make_pair(s, d);
 }
