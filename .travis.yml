@@ -18,7 +18,7 @@ matrix:
         - cd build_debug
         - xcodebuild
         - cd bin # It'd be great if we could just run all the binaries we find in here...
-        - cat "Hello, world!" > example.txt
+        - echo "Hello, world!" > example.txt
         - ./bagobytes example.txt
 notifications:
   recipients:
